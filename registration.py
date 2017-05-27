@@ -8,6 +8,10 @@ from scipy import ndimage
 import math
 
 def get_corners(img):
+    """
+    input : image
+    output: 'R' values of all elements in matrix form, points above a threshhold
+    """
     #Conver to grey scale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = np.float32(gray)
@@ -33,6 +37,12 @@ def get_corners(img):
 
 
 def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
+    """
+    Input: images, location of corners, size of window
+    Output: list of matched points as lists
+    Images are requried as NCC is implemented in spatial domain and uses intensity
+    vectos
+    """
     n = window_size
     point_list = []
     for point1 in dst_list1:
@@ -40,6 +50,8 @@ def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
         correspond_point = None
         p1_x = point1[0]
         p1_y = point1[1]
+
+        #Create a window. Now assumed of 5 by 5
         if p1_x - 2 >= 0 and p1_y - 2 >= 0:
             win1 = img1[p1_x - 2: p1_x + 3, p1_y - 2: p1_y + 3]
             win1 = np.pad(win1, ((0, n - win1.shape[0]), (0, n - win1.shape[1])), mode = 'constant', constant_values = 0)
@@ -78,6 +90,7 @@ def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
             denominator = math.sqrt(win1_norm * win2_norm)
             numerator = ((win2 - win2_mean) * (win1 - win1_mean)).sum()
             ncc = numerator/ denominator
+            
             if ncc > max_ncc:
                 max_ncc = ncc
                 correspond_point = point2
@@ -86,53 +99,18 @@ def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
         except:
             pass
         point_list.append((point1, correspond_point))
+    
     print dst_list2
     return point_list
-
-def Haffine_from_points(fp,tp):
-    """ find H, affine transformation, such that 
-        tp is affine transf of fp"""
-
-    if fp.shape != tp.shape:
-        raise RuntimeError, 'number of points do not match'
-
-    #condition points
-    #-from points-
-    m = scipy.mean(fp[:2], axis=1)
-    maxstd = max(np.std(fp[:2], axis=1))
-    C1 = scipy.diag([1/maxstd, 1/maxstd, 1]) 
-    C1[0][2] = -m[0]/maxstd
-    C1[1][2] = -m[1]/maxstd
-    fp_cond = scipy.dot(C1,fp)
-
-    #-to points-
-    m = scipy.mean(tp[:2], axis=1)
-    C2 = C1.copy() #must use same scaling for both point sets
-    C2[0][2] = -m[0]/maxstd
-    C2[1][2] = -m[1]/maxstd
-    tp_cond = scipy.dot(C2,tp)
-
-    #conditioned points have mean zero, so translation is zero
-    A = scipy.concatenate((fp_cond[:2],tp_cond[:2]), axis=0)
-    U,S,V = linalg.svd(A.T)
-
-    #create B and C matrices as Hartley-Zisserman (2:nd ed) p 130.
-    tmp = V[:2].T
-    B = tmp[:2]
-    C = tmp[2:4]
-
-    tmp2 = scipy.concatenate((scipy.dot(C,linalg.pinv(B)), np.zeros((2,1))), axis=1) 
-    H = scipy.vstack((tmp2,[0,0,1]))
-
-    #decondition
-    H = scipy.dot(linalg.inv(C2),scipy.dot(H,C1))
-
-    return H / H[2][2]
-
 
 
 def ransac(im1, im2, points_list, iters = 10 , error = 10, good_model_num = 5):
     '''
+        Input: images, points in form[(x,y),(x',y')] where those points are 
+        corresponding points in image, number of interations of ransac,
+        error in distance of point that can be tolerated, min number of points
+        needed to say that array is good
+        Output: returns transformation matrix H
         This function uses RANSAC algorithm to estimate the
         shift and rotation between the two given images
     '''
@@ -150,30 +128,19 @@ def ransac(im1, im2, points_list, iters = 10 , error = 10, good_model_num = 5):
             temp = choice(points_list_temp)
             consensus_set.append(temp)
             points_list_temp.remove(temp)
-        
         # Calculate the homography matrix from the 3 points
         
-        fp0 = []
-        fp1 = []
-        fp2 = []
-        
-        tp0 = []
-        tp1 = []
-        tp2 = []
-        for line in consensus_set:
-        
-            fp0.append(line[0][0])
-            fp1.append(line[0][1])
-            fp2.append(1)
+        fsrc = []
+        fdst = []
+        for line in consensus_set: 
+            fsrc.append(np.array([line[0][0], line[0][1]]))
             
-            tp0.append(line[1][0])
-            tp1.append(line[1][1])
-            tp2.append(1)
-            
-        fp = np.array([fp0, fp1, fp2])
-        tp = np.array([tp0, tp1, tp2])
+            fdst.append(np.array([line[1][0], line[1][1]]))
+
+        fp = np.float32(np.array(fsrc))
+        tp = np.float32(np.array(fdst))
         
-        H = Haffine_from_points(fp, tp)
+        H = cv2.getAffineTransform(fp, tp)
                             
         # Transform the second image
         # imtemp = transform_im(im2, [-xshift, -yshift], -theta)
@@ -184,7 +151,7 @@ def ransac(im1, im2, points_list, iters = 10 , error = 10, good_model_num = 5):
             x2, y2 = p[1]
 
             A = np.array([x1, y1, 1]).reshape(3,1)
-            B = np.array([x2, y2, 1]).reshape(3,1)
+            B = np.array([x2, y2]).reshape(2,1)
             
             out = B - scipy.dot(H, A)
             dist_err = scipy.hypot(out[0][0], out[1][0])
@@ -200,7 +167,7 @@ def ransac(im1, im2, points_list, iters = 10 , error = 10, good_model_num = 5):
                 x1, y1 = p[1]
                 
                 A = np.array([x0, y0, 1]).reshape(3,1)
-                B = np.array([x1, y1, 1]).reshape(3,1)
+                B = np.array([x1, y1]).reshape(2,1)
                 
                 out = B - scipy.dot(H, A)
                 dist_err = scipy.hypot(out[0][0], out[1][0])
@@ -210,34 +177,45 @@ def ransac(im1, im2, points_list, iters = 10 , error = 10, good_model_num = 5):
                 model_H = H
                         
     return model_H
- 
-img1 = cv2.imread(sys.argv[1])
-img2 = cv2.imread(sys.argv[2])
-dst1, dist_cordinate1 = get_corners(img1)
-dst2, dist_cordinate2 = get_corners(img2)
 
+if __name__ == '__main__':
+    debug = True
+    try:
+        img1 = cv2.imread(sys.argv[1])
+        img2 = cv2.imread(sys.argv[2])
+    except:
+        print "usage python registration.py <img1> <img2>"
+    
+    #get locations of corners
+    dst1, dist_cordinate1 = get_corners(img1)
+    dst2, dist_cordinate2 = get_corners(img2)
 
-print len(dist_cordinate1)
-print len(dist_cordinate2)
-"""print dist_cordinate1
-print "end"
-print dist_cordinate2"""
-gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-point_list = get_matches(gray1, gray2, dist_cordinate1, dist_cordinate2)
+    if debug:
+        print len(dist_cordinate1)
+        print len(dist_cordinate2)
+
+    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+    #get corresponding points
+    point_list = get_matches(gray1, gray2, dist_cordinate1, dist_cordinate2)
 
 #get matches by using NCC and store it in form [(x,y), (x',y')]
 
 
-out = ransac(gray1, gray2, point_list)
-print "H matrix", out
-H_ = linalg.inv(out)
-print H_
-imtemp = scipy.ndimage.affine_transform(gray1, H_[:2, :2], [H_[0][2], H_[1][2]])
-# Threshold for an optimal value, it may vary depending on the image.
-#img1[dst1   >0.01*dst1.max()]=[0,0,255]
-print (imtemp - gray2).tolist()
-cv2.imshow('dst',gray2)
-cv2.imshow('dsttmp', imtemp)
-if cv2.waitKey(0) & 0xff == 27:
+    out = ransac(gray1, gray2, point_list)
+    print "H matrix", out
+   
+    # as we have H calculate predicated second image from first image
+    imtemp = cv2.warpAffine(np.float32(gray1), out, gray1.shape)
+    
+    if debug:
+        print "gray2 = ", gray2
+        print  "imtemp= ", imtemp
+    
+    imtemp = np.uint8(imtemp)
+    cv2.imshow('dst',gray2)
+    cv2.imshow('dsttmp', imtemp)
+    
+    if cv2.waitKey(0) & 0xff == 27:
         cv2.destroyAllWindows()
