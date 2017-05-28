@@ -46,6 +46,8 @@ def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
     n = window_size
     point_list = []
     for point1 in dst_list1:
+        if len(dst_list2) == 0:
+            break
         max_ncc = -2
         correspond_point = None
         p1_x = point1[0]
@@ -100,7 +102,7 @@ def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
             pass
         point_list.append((point1, correspond_point))
     
-    print dst_list2
+    #print dst_list2
     return point_list
 
 
@@ -199,7 +201,7 @@ if __name__ == '__main__':
 
     #get corresponding points
     point_list = get_matches(gray1, gray2, dist_cordinate1, dist_cordinate2)
-
+    print point_list
 #get matches by using NCC and store it in form [(x,y), (x',y')]
 
 
