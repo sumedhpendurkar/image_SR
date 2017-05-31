@@ -36,7 +36,7 @@ def get_corners(img):
 
 
 
-def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
+def get_matches(img1, img2, dst_list1, dst_list2, threshold, window_size = 5):
     """
     Input: images, location of corners, size of window
     Output: list of matched points as lists
@@ -93,10 +93,13 @@ def get_matches(img1, img2, dst_list1, dst_list2, window_size = 5):
             numerator = ((win2 - win2_mean) * (win1 - win1_mean)).sum()
             ncc = numerator/ denominator
             
-            if ncc > max_ncc:
+            if ncc > max_ncc and ncc > threshold:
                 max_ncc = ncc
                 correspond_point = point2
         try:
+            if max_ncc == -2:
+                continue
+            print max_ncc, (correspond_point, point1)
             dst_list2.remove(correspond_point)
         except:
             pass
@@ -186,7 +189,7 @@ if __name__ == '__main__':
         img1 = cv2.imread(sys.argv[1])
         img2 = cv2.imread(sys.argv[2])
     except:
-        print "usage python registration.py <img1> <img2>"
+        print "usage python registration.py <img1> <img2> <threshold_for_ncc>"
     
     #get locations of corners
     dst1, dist_cordinate1 = get_corners(img1)
@@ -200,7 +203,7 @@ if __name__ == '__main__':
     gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
     #get corresponding points
-    point_list = get_matches(gray1, gray2, dist_cordinate1, dist_cordinate2)
+    point_list = get_matches(gray1, gray2, dist_cordinate1, dist_cordinate2, float(sys.argv[3]))
     print point_list
 #get matches by using NCC and store it in form [(x,y), (x',y')]
 
@@ -216,8 +219,4 @@ if __name__ == '__main__':
         print  "imtemp= ", imtemp
     
     imtemp = np.uint8(imtemp)
-    cv2.imshow('dst',gray2)
-    cv2.imshow('dsttmp', imtemp)
-    
-    if cv2.waitKey(0) & 0xff == 27:
-        cv2.destroyAllWindows()
+    cv2.imwrite(sys.argv[2] + sys.argv[3] + "registered.png", imtemp)
