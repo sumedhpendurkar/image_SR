@@ -6,6 +6,7 @@ from random import choice
 from scipy import linalg
 from scipy import ndimage
 import math
+import interpolate
 
 def get_corners(img):
     """
@@ -210,13 +211,23 @@ if __name__ == '__main__':
 
     out = ransac(gray1, gray2, point_list)
     print "H matrix", out
-   
+  
+    upscaled_gray1 = interpolate.get_upscaled(gray1)
+
     # as we have H calculate predicated second image from first image
-    imtemp = cv2.warpAffine(np.float32(gray1), out, gray1.shape)
+    imtemp = cv2.warpAffine(np.float32(upscaled_gray1), out, (2 * gray1.shape[1], 2 * gray1.shape[0]))
     
+    final_img = interpolate.merge_images(upscaled_gray1, np.uint8(imtemp))
+    #cv2.imshow('merged', np.uint8(final_img))
+    cv2.imwrite(sys.argv[2][:-4]+'merged.png', np.uint8(final_img))
+    final_img = interpolate.image_interpolate2(final_img)
+    #cv2.imshow('interpolated', np.uint8(final_img))
+    cv2.imwrite(sys.argv[2][:-4]+ 'interpolated.png', np.uint8(final_img))
     if debug:
         print "gray2 = ", gray2
         print  "imtemp= ", imtemp
     
     imtemp = np.uint8(imtemp)
-    cv2.imwrite(sys.argv[2] + sys.argv[3] + "registered.png", imtemp)
+"""    if cv2.waitKey(0) & 0xff == 27:
+        cv2.destoryAllWindows()"""
+#cv2.imwrite(sys.argv[2] + sys.argv[3] + "registered.png", imtemp)
