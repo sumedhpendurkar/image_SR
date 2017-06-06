@@ -68,7 +68,7 @@ def get_matches(img1, img2, dst_list1, dst_list2, threshold, window_size = 5):
             win1 = img1[0: p1_x + 3, 0: p1_y + 3]
             win1 = np.pad(win1, ((2 - p1_x, 0), (2 - p1_y, 0)), mode = 'constant', constant_values = 0)
         #print "win1 = ", win1
-        win1_mean = img1.mean() * np.ones(win1.shape)
+        win1_mean = win1.mean() * np.ones(win1.shape)
         win1_norm = ((win1 - win1_mean) * (win1 - win1_mean)).sum()
 
         for point2 in dst_list2:
@@ -88,7 +88,7 @@ def get_matches(img1, img2, dst_list1, dst_list2, threshold, window_size = 5):
                 win2 = np.pad(win2, ((2 - p2_x, 0), (2 - p2_y, 0)), mode = 'constant', constant_values = 0)
 
             #print "win2 = ", win2
-            win2_mean = img2.mean() * np.ones(win2.shape)
+            win2_mean = win2.mean() * np.ones(win2.shape)
             win2_norm = ((win2 - win2_mean) * (win2 - win2_mean)).sum()
             denominator = math.sqrt(win1_norm * win2_norm)
             numerator = ((win2 - win2_mean) * (win1 - win1_mean)).sum()
@@ -219,15 +219,15 @@ if __name__ == '__main__':
     
     final_img = interpolate.merge_images(upscaled_gray1, np.uint8(imtemp))
     #cv2.imshow('merged', np.uint8(final_img))
-    cv2.imwrite(sys.argv[2][:-4]+'merged.png', np.uint8(final_img))
+    cv2.imshow(sys.argv[2][:-4]+'merged.png', np.uint8(final_img))
     final_img = interpolate.image_interpolate2(final_img)
     #cv2.imshow('interpolated', np.uint8(final_img))
-    cv2.imwrite(sys.argv[2][:-4]+ 'interpolated.png', np.uint8(final_img))
+    cv2.imshow(sys.argv[2][:-4]+ 'interpolated.png', np.uint8(final_img))
     if debug:
         print "gray2 = ", gray2
         print  "imtemp= ", imtemp
     
     imtemp = np.uint8(imtemp)
-"""    if cv2.waitKey(0) & 0xff == 27:
-        cv2.destoryAllWindows()"""
+    if cv2.waitKey(0) & 0xff == 27:
+        cv2.destoryAllWindows()
 #cv2.imwrite(sys.argv[2] + sys.argv[3] + "registered.png", imtemp)
