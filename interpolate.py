@@ -80,15 +80,6 @@ def image_interpolate2(img):
                 print img[x][y]
                 print '---end---'
                 #bilinear = intp.interp2d(pointx, pointy, intensity, kind = 'linear')
-                #img[x][y]  = bilinear(x,y)
-                """if img[x][y] >= 255:
-                    print "--start--"
-                    print x,y
-                    print pointx
-                    print pointy
-                    print intensity
-                    print "--end--"
-                """
     return img
 
 
