@@ -45,6 +45,31 @@ def get_matches(img1, img2, dst_list1, dst_list2, threshold, window_size = 5):
     vectos
     """
     n = window_size
+    point2_win = []
+    point2_win_mean = []
+    point2_win_norm = []
+    for point2 in dst_list2:
+        p2_x = point2[0]
+        p2_y = point2[1]
+        if p2_x - 2 >= 0 and p2_y - 2 >= 0:
+            win2 = img2[p2_x - 2: p2_x + 3, p2_y - 2: p2_y + 3]
+            win2 = np.pad(win2, ((0, n - win2.shape[0]), (0, n - win2.shape[1])), mode = 'constant', constant_values = 0)
+        elif p2_y - 2 >= 0:
+            win2 = img2[0: p2_x + 3, p2_y - 2: p2_y + 3]
+            win2 = np.pad(win2, ((2 - p2_x, 0), (0, n - win2.shape[1])), mode = 'constant', constant_values = 0)
+        elif p2_x - 2 >= 0:
+            win2 = img2[p2_x - 2: p2_x + 3, 0: p2_y + 3]
+            win2 = np.pad(win2, ((0, n - win2.shape[0]), (2 - p2_y, 0)), mode = 'constant', constant_values = 0)
+        else:
+            win2 = img2[0: p2_x + 3, 0: p2_y + 3]
+            win2 = np.pad(win2, ((2 - p2_x, 0), (2 - p2_y, 0)), mode = 'constant', constant_values = 0)
+
+            #print "win2 = ", win2
+        win2_mean = win2.mean() * np.ones(win2.shape)
+        win2_norm = ((win2 - win2_mean) * (win2 - win2_mean)).sum()
+        point2_win.append(win2)
+        point2_win_mean.append(win2_mean)
+        point2_win_norm.append(win2_norm)
     point_list = []
     for point1 in dst_list1:
         if len(dst_list2) == 0:
@@ -71,41 +96,31 @@ def get_matches(img1, img2, dst_list1, dst_list2, threshold, window_size = 5):
         win1_mean = win1.mean() * np.ones(win1.shape)
         win1_norm = ((win1 - win1_mean) * (win1 - win1_mean)).sum()
 
-        for point2 in dst_list2:
-            p2_x = point2[0]
-            p2_y = point2[1]
-            if p2_x - 2 >= 0 and p2_y - 2 >= 0:
-                win2 = img2[p2_x - 2: p2_x + 3, p2_y - 2: p2_y + 3]
-                win2 = np.pad(win2, ((0, n - win2.shape[0]), (0, n - win2.shape[1])), mode = 'constant', constant_values = 0)
-            elif p2_y - 2 >= 0:
-                win2 = img2[0: p2_x + 3, p2_y - 2: p2_y + 3]
-                win2 = np.pad(win2, ((2 - p2_x, 0), (0, n - win2.shape[1])), mode = 'constant', constant_values = 0)
-            elif p2_x - 2 >= 0:
-                win2 = img2[p2_x - 2: p2_x + 3, 0: p2_y + 3]
-                win2 = np.pad(win2, ((0, n - win2.shape[0]), (2 - p2_y, 0)), mode = 'constant', constant_values = 0)
-            else:
-                win2 = img2[0: p2_x + 3, 0: p2_y + 3]
-                win2 = np.pad(win2, ((2 - p2_x, 0), (2 - p2_y, 0)), mode = 'constant', constant_values = 0)
-
-            #print "win2 = ", win2
-            win2_mean = win2.mean() * np.ones(win2.shape)
-            win2_norm = ((win2 - win2_mean) * (win2 - win2_mean)).sum()
+        index = 0
+        while index <  len(point2_win):
+            win2 = point2_win[index]
+            win2_mean = point2_win_mean[index]
+            win2_norm = point2_win_norm[index]
             denominator = math.sqrt(win1_norm * win2_norm)
             numerator = ((win2 - win2_mean) * (win1 - win1_mean)).sum()
             ncc = numerator/ denominator
             
             if ncc > max_ncc and ncc > threshold:
                 max_ncc = ncc
-                correspond_point = point2
+                corresponding_index = index
+            index+=1
         try:
             if max_ncc == -2:
                 continue
-            print max_ncc, (correspond_point, point1)
-            dst_list2.remove(correspond_point)
+            print max_ncc, (dst_list2[corresponding_index], point1)
+            point_list.append((point1, dst_list2[corresponding_index]))
+            del dst_list2[corresponding_index]
+            del point2_win[corresponding_index]
+            del point2_win_mean[corresponding_index]
+            del point2_win_norm[corresponding_index]
         except:
             pass
-        point_list.append((point1, correspond_point))
-    
+
     #print dst_list2
     return point_list
 
