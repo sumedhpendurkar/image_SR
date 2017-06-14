@@ -7,6 +7,12 @@ from scipy import interpolate as intp
 import math
 
 def get_upscaled(src, ratio = 2):
+    """
+    zoom and dont predict intermediate pixels
+    src : input image
+    ratio : zoom by ratio factor
+    returns a image of size = ratio^2*sizeof(src)
+    """
     rows, cols = src.shape
     img = np.zeros((rows*ratio, cols*ratio), dtype = np.uint8)
     for x in range(0, rows):
@@ -15,6 +21,10 @@ def get_upscaled(src, ratio = 2):
     return img
 
 def merge_images(img1, img2):
+    """
+    merge two images; black pixels are empty
+    returns the merged image
+    """
     r, c = img1.shape
     img = np.zeros(img1.shape)
     for x in xrange(r):
@@ -27,6 +37,9 @@ def merge_images(img1, img2):
 
 
 def image_interpolate2(img):
+    """
+    perform weightest nearest neighbour on the input image and return the image
+    """
     r, c = img.shape
     is_valid = lambda x,y: x >=0 and x<r and y >= 0 and y < c
     is_non_empty = lambda x,y: img[x][y] > 0

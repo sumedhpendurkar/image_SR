@@ -45,6 +45,9 @@ def get_matches(img1, img2, dst_list1, dst_list2, threshold, window_size = 5):
     vectos
     """
     n = window_size
+
+    #theres no need to recompute the windows in image 2 
+    #store them and their means and norms
     point2_win = []
     point2_win_mean = []
     point2_win_norm = []
@@ -70,7 +73,14 @@ def get_matches(img1, img2, dst_list1, dst_list2, threshold, window_size = 5):
         point2_win.append(win2)
         point2_win_mean.append(win2_mean)
         point2_win_norm.append(win2_norm)
+
+    #store the matched points in the list 
     point_list = []
+
+    
+    #take a point from list1 and all from list2; calculate ncc
+    #if ncc is greater than a threshold for the highest match found store it
+    #and remove that point
     for point1 in dst_list1:
         if len(dst_list2) == 0:
             break
